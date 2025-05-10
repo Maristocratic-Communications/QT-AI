@@ -11,6 +11,6 @@ Step 2. run `pip -r requirements.txt` to get needed packages
 
 Step 3. create a .env file containing `BOT_TOKEN=[Insert Token here, without brackets]`
 
-Step 4 (Optional). Edit config.json to configure your custom AI bot. If Ollama is changed to use another port, you this is not Optional.
+Step 4 (Optional). Edit config.json to configure your custom AI bot. If Ollama is changed to use another port, this step is not Optional.
 
 Step 5. Run the bot using start.sh or start.bat
