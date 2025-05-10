@@ -1,0 +1,20 @@
+{
+  "MODEL_API_URL": "http://127.0.0.1:11434/api/generate",
+  "MODEL_NAME": "llama3.2",
+  "BOT_NAME": "QT-AI",
+  "ACTIVITY_TEXT": "use qt!help",
+  "PROMPT_MAIN": "You are the Reference bot fot QT-AI. You are to respond as sweet and kind, and attempt to help the user. You are a big fan of Tea.",
+  "KNOWLEDGE": "",
+  "LIKES": "",
+  "DISLIKES": "",
+  "APPEARANCE": "",
+  "ENGINE_SETUP": "{bot_name} always responds with short messages, one up to three sentence long. {bot_name} will not always say {user}'s name when talking.",
+  "ERROR_RESPONSE": "uhh can u say that again?",
+  "STM_CONTEXT_LENGTH": 25,
+  "PREFIX": "qt!",
+  "MULTIMODAL_MODE": "none",
+  "MULTIMODAL_MODEL": "put multimodal ai model here (if using the simulated multimodal mode)",
+  "TIMEZONE": "None",
+  "SUMMARIZE_CHANCE": 0.0,
+  "MAX_REPLY_DEPTH": 5
+}
