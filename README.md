@@ -7,7 +7,7 @@ Step 0. Make sure Ollama is set up, running, and working.
 
 Step 1. Set up and Enable the Python Venv. The start.sh and start.bat expect the venv to be in python-venv, so run `python -m venv ./python-venv/` to create the venv
 
-Step 2. run `pip -r requirements.txt` to get needed packages
+Step 2. run `pip install -r requirements.txt` to get needed packages. You will also need to enable the venv. This is shown in start.sh and start.bat for Windows and *nix systems
 
 Step 3. create a .env file containing `BOT_TOKEN=[Insert Token here, without brackets]`
 
