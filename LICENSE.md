@@ -1,4 +1,4 @@
-# Maristocratic Communications Non-Commercial Source Licence 1.0
+# Maristocratic Communications Non-Commercial Source Licence 1.1
 
 Copyright (c) 2025 Mari Kepler, Maristocratic Communications
 
@@ -43,6 +43,10 @@ For the purposes of this License:
 ### 4. Termination
 
 Violation of any term of this License will result in immediate termination of the Licensee's rights. Upon termination, all copies of the Software must be deleted or destroyed.
+
+### 5. Copyleft and Derivative Works
+
+Any modified or derivative version of the Software, whether distributed publicly or privately, must remain licensed under this License (MCNCSL 1.1) in full and unmodified. You may not relicense the Software or any derivative under a different license, nor may you impose additional restrictions beyond those in this License. This ensures that all modified versions remain non-commercial, source-available, and consistent with the original Author's intent.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
