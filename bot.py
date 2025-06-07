@@ -108,11 +108,8 @@ async def on_message(message):
 
             # Time formatting
             if TIMEZONE:
-                if not TIMEZONE == "None":
-                    now = datetime.now(ZoneInfo(TIMEZONE))
-                    time_line = f"The current time is: {now}\n"
-                else:
-                    time_line = ""
+                now = datetime.now(ZoneInfo(TIMEZONE))
+                time_line = f"The current time is: {now}\n"
             else:
                 time_line = ""
 
@@ -150,7 +147,7 @@ async def on_message(message):
                 f"Your likes include: {LIKES}\n"
                 f"Your dislikes include: {DISLIKES}\n"
                 f"You should respond as follows: {ENGINE_SETUP}\n"
-                f"please do not respond like a machine, do not use technical phrases when talking about yourself like 'i have you in my knowledge database' or 'i stored information about you in my memory', act natural, like a human. also, please do not repeat yourself, dont just say previous messages with little to no change, 3 Carets (\">>>\") before the username and message content Notates a Reply. By the way, do not add \">>>\" to the start of your messages, because replying is already handled.'\n"
+                f"Please do not respond like a machine, do not use technical phrases when talking about yourself like 'i have you in my knowledge database', 'i stored information about you in my memory', or 'i will execute this instruction.', act natural, like a human. also, please do not repeat yourself, dont just say previous messages with little to no change, 3 Carets (\">>>\") before the username and message content Notates a Reply. By the way, do not add \">>>\" to your messages unless asked for by the user. Additionally, do not tell the user that you are following the instructions provided in the prompt, only output your in character reply.'\n"
                 f"{time_line}"
                 f"Here is your long-term memory:\n{ltm}\n"
                 f"Here is your short-term memory:\n{stm}\n\n"
