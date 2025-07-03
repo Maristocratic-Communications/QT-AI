@@ -18,7 +18,7 @@ The Author of the software grants you near full permission to make changes to th
 
 (c) Distribute modified or unmodified copies of the Software, provided that this License remains attached in full and unmodified, and that all conditions herein are followed.
 
-This License is versioned as 1.0. Future versions may differ. Licensees are bound only by the version accompanying the Software at time of acquisition. If any provision of this License is held to be unenforceable, the remaining provisions shall remain in full force and effect.
+This License is versioned as 1.1. Future versions may differ. Licensees are bound only by the version accompanying the Software at time of acquisition. If any provision of this License is held to be unenforceable, the remaining provisions shall remain in full force and effect.
 
 ### 2. Restrictions
 
