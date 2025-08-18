@@ -103,7 +103,7 @@ async def on_message(message):
             return
         db.setdefault("freewill", {"Enabled": freewillToggle, "msgFreq": freewillRespondChance, "reactFreq": freewillReactChance, "blocked_channels": []})
         discardFreewill = True
-    freewillOn = db["freewill"]["Enabled"] or freewillToggle
+    freewillOn = db["freewill"]["Enabled"]
     if not should_respond and freewillOn:
         freewillsettings = db["freewill"]
         if str(message.channel.id) in db["freewill"]["blocked_channels"]:
