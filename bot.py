@@ -680,7 +680,7 @@ def nsfw_filter(inputted: str, noNSFW: bool = True) -> str:
         "jork", "goon", "dong", "fap",
         "pussy", "coochie", "cooch", "vajayjay",
         "tits", "nipples", "areola", "milf", "dilf",
-        "bdsm", "fetish", "kink", "deepthroat",
+        "bdsm", "fetish", "deepthroat",
         "handjob", "blowjob", "bj", "hj",
         "rimjob", "doggystyle", "doggy",
         "threesome", "foursome", "gangbang",
@@ -689,7 +689,7 @@ def nsfw_filter(inputted: str, noNSFW: bool = True) -> str:
         "masturbate", "masturbation", "jerk off",
         "dildo", "buttplug", "vibrator",
         "strapon", "pegging", "fleshlight",
-        "moan", "nsfw", "onlyfans",
+        "moan", "vore", "onlyfans",
         "camgirl", "camguy", "camwhore",
         "hentai", "rule34", "rape"
     ]
