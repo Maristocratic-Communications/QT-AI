@@ -179,6 +179,8 @@ async def on_message(message):
         db.pop('freewill', None)
 
     if should_respond:
+        if not nsfw_filter(message.content, noNSFW):
+            return await message.channel.send("Sorry, but NSFW content isn't allowed")
         reply_block = ""
         ref = message.reference
         if ref is not None and ref.message_id:
@@ -207,8 +209,6 @@ async def on_message(message):
         return
 
     if should_respond:
-        if not nsfw_filter(message.content, noNSFW):
-            return await message.channel.send("Sorry, but NSFW content isn't allowed")
         async with message.channel.typing():
             # Load LTM
             ltm = ""
