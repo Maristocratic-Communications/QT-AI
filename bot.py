@@ -99,6 +99,8 @@ async def on_message(message):
 
     discardFreewill = False
     if not "freewill" in db:
+        if message.author.bot:
+            return
         db.setdefault("freewill", {"Enabled": freewillToggle, "msgFreq": freewillRespondChance, "reactFreq": freewillReactChance, "blocked_channels": []})
         discardFreewill = True
     freewillOn = db["freewill"]["Enabled"] or freewillToggle
@@ -337,8 +339,8 @@ async def deactivate(ctx):
 @discord.app_commands.default_permissions(manage_guild=True)
 async def freewill(
     ctx: discord.Interaction,
-    msgfreq: float = 0.04,
-    reactfreq: float = 0.07,
+    msgfreq: float = 0.03,
+    reactfreq: float = 0.05,
     enabled: bool = True,
     weighkeywords: bool = True,
     block_current_channel: bool = False
@@ -509,8 +511,8 @@ async def reload(ctx):
     noNSFW = config.get("noNSFW", True)
     summarizeChance = config.get("summarizeChance")
     freewillToggle = config.get("freewillToggle", False)
-    freewillReactChance = config.get("freewillReactChance", 0.07)
-    freewillRespondChance = config.get("freewillRespondChance", 0.04)
+    freewillReactChance = config.get("freewillReactChance", 0.05)
+    freewillRespondChance = config.get("freewillRespondChance", 0.03)
     freewillKeywords = config.get("freewillKeywords", {})
     replyChainLimit = config.get("replyChainLimit", 5)
 
