@@ -45,7 +45,7 @@ freewillKeywords = config.get("freewillKeywords", {})
 replyChainLimit = config.get("replyChainLimit", 5)
 
 # Enable/Disable Eval command for debugging. Probably safe to keep enabled if you own the bot.
-enableEval = True
+enableEval = False
 
 #Initialize shit
 intents = discord.Intents.default()
