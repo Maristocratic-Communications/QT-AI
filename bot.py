@@ -228,18 +228,18 @@ async def on_message(message):
                 if imageMode == "native":
                     image_urls = [
                         a.url for a in message.attachments
-                        if a.content_type and (a.content_type.startswith("image/") or a.content_type.startswith("audio/"))
+                        if a.content_type and a.content_type.startswith("image/")
                     ]
                     if image_urls:
-                        image_block = "\n(Images/Audio attached for context.)"
+                        image_block = "\n(Images attached for context.)"
                 elif imageMode == "simulated":
                     descriptions = []
                     for a in message.attachments:
-                        if a.content_type and (a.content_type.startswith("image/") or a.content_type.startswith("audio/")):
+                        if a.content_type and a.content_type.startswith("image/"):
                             desc = await describe_image(a.url, model=imageModel)
                             descriptions.append(desc)
                     if descriptions:
-                        image_block = "\nAttached image/audio descriptions:\n" + "\n".join(descriptions)
+                        image_block = "\nAttached image descriptions:\n" + "\n".join(descriptions)
 
             # Prompt
             query = makeprompt(message, "ltm", stm, reply_block, image_block)
@@ -614,49 +614,38 @@ def save_db(serverId, db):
     with open(f"data/{serverId}.json", "w") as f:
         json.dump(db, f, indent=2)
 
-import mimetypes
-
-async def describe_image(file_url: str, model: str = None) -> str:
+# Compatibility with images using multimodal LLM (Ollama NDJSON streaming)
+async def describe_image(image_url: str, model: str = None) -> str:
     try:
-        # Download file
+        # Download the image
         async with aiohttp.ClientSession() as session:
-            async with session.get(file_url) as resp:
+            async with session.get(image_url) as resp:
                 if resp.status != 200:
-                    return f"[Media attached, but download failed: status {resp.status}]"
-                file_bytes = await resp.read()
+                    print(f"Failed to download image, status code: {resp.status}")
+                    return f"[Image attached, but download failed: status {resp.status}]"
+                image_bytes = await resp.read()
 
-        # Guess file type
-        mime_type, _ = mimetypes.guess_type(file_url)
-        if mime_type is None:
-            return "[Media attached, but type could not be detected.]"
+        # Encode image to base64
+        image_b64 = base64.b64encode(image_bytes).decode("utf-8")
 
-        file_b64 = base64.b64encode(file_bytes).decode("utf-8")
+        # Use provided model or fallback
+        selected_model = model or "llava"
 
-        # Always use the multimodal LLM
-        selected_model = model or "granite3.3:8b"
-
+        # Create the generation request payload
         payload = {
             "model": selected_model,
-            "prompt": (
-                "If this is an image, describe it thoroughly but not too vividly. "
-                "If this is audio, transcribe it and mention sound effects."
-            ),
+            "prompt": "Describe this image thoroughly, but not too vividly. Do not include any prefatory text.",
+            "images": [image_b64],
             "stream": True
         }
 
-        if mime_type.startswith("image/"):
-            payload["images"] = [file_b64]
-        elif mime_type.startswith("audio/"):
-            payload["audio"] = file_b64
-        else:
-            return f"[Unsupported media type: {mime_type}]"
-
         description = ""
 
-        # Send request to Ollama
+        # Send POST request to Ollama
         async with aiohttp.ClientSession() as session:
             async with session.post("http://localhost:11434/api/generate", json=payload) as res:
                 res.raise_for_status()
+
                 async for line in res.content:
                     line_data = line.decode("utf-8").strip()
                     if not line_data:
@@ -665,13 +654,17 @@ async def describe_image(file_url: str, model: str = None) -> str:
                         data = json.loads(line_data)
                         if "response" in data:
                             description += data["response"]
-                    except json.JSONDecodeError:
-                        pass
+                        else:
+                            print(f"Line missing 'response' field: {data}")
+                    except json.JSONDecodeError as e:
+                        print(f"Failed to parse line as JSON: {e}, raw: {line_data}")
 
-        return description.strip() or "[No description returned.]"
+        description = description.strip()
+        return description if description else "[Image attached, but received no description.]"
 
     except Exception as e:
-        return f"[Media attached, but processing failed: {e}]"
+        print(f"Error during image description: {e}")
+        return f"[Image attached, but description failed: {e}]"
 
 def nsfw_filter(inputted: str, noNSFW: bool = True) -> str:
     if not noNSFW:
