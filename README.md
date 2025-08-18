@@ -7,7 +7,7 @@ Step 0. Make sure Ollama is set up, running, and working.
 
 Step 1. Set up and Enable the Python Venv. The start.sh and start.bat expect the venv to be in python-venv, so run `python -m venv ./python-venv/` to create the venv
 
-Step 2. run `pip install -r requirements.txt` to get needed packages. You will also need to enable the venv. This is shown in start.sh and start.bat for Windows and *nix systems
+Step 2. run `pip install discord.py aiohttp python-dotenv tzdata` to get needed packages. You will also need to enable the venv. This is shown in start.sh and start.bat for Windows and *nix systems
 
 Step 3. create a .env file containing `BOT_TOKEN=[Insert Token here, without brackets]`
 
@@ -16,6 +16,7 @@ Step 4 (Optional). Edit config.json to configure your custom AI bot. If Ollama i
 Step 5. Run the bot using start.sh or start.bat
 
 ## Config Guide
+### outdated, too lazy to update tbh
 * MODEL_API_URL<br>
 This is where you set up the API where Ollama runs
 
