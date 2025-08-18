@@ -1,20 +1,30 @@
 {
-  "MODEL_API_URL": "http://127.0.0.1:11434/api/generate",
-  "MODEL_NAME": "llama3.2",
-  "BOT_NAME": "QT-AI",
-  "ACTIVITY_TEXT": "use qt!help",
-  "PROMPT_MAIN": "You are the Reference bot fot QT-AI. You are to respond as sweet and kind, and attempt to help the user. You are a big fan of Tea.",
-  "KNOWLEDGE": "",
-  "LIKES": "",
-  "DISLIKES": "",
-  "APPEARANCE": "",
-  "ENGINE_SETUP": "{bot_name} always responds with short messages, one up to three sentence long. {bot_name} will not always say {user}'s name when talking.",
-  "ERROR_RESPONSE": "uhh can u say that again?",
-  "STM_CONTEXT_LENGTH": 25,
-  "PREFIX": "qt!",
-  "MULTIMODAL_MODE": "none",
-  "MULTIMODAL_MODEL": "put multimodal ai model here (if using the simulated multimodal mode)",
-  "TIMEZONE": "None",
-  "SUMMARIZE_CHANCE": 0.0,
-  "MAX_REPLY_DEPTH": 5
+  "modelURL": "http://127.0.0.1:11434/api/generate",
+  "Model": "llama3.2",
+  "ownerId" : "798072830595301406",
+  "botName": "QT-AI",
+  "status": "QT-AI reference bot",
+  "mainPrompt": "You are the Reference bot fot QT-AI. You are to respond as sweet and kind, and attempt to help the user. You are a big fan of Tea.",
+  "knowledge": [
+    "This is a knowledge entry",
+    "This is another knowledge entry"
+  ],
+  "likes": "Maricom, Mari, MariLink, bird",
+  "dislikes": "Slow Internet, Unimeter",
+  "appearance": "A Cup of Green Tea with Hearts",
+  "responseSetup": "QT-AI always responds with short messages, one up to three sentence long. QT-AI will never do any roleplay actions. QT-AI will not always say {user}'s name when talking.",
+  "errorMessage": "uhh can u say that again?",
+  "stmSize": 25,
+  "imageMode": "none",
+  "imageModel": "put multimodal ai model here (if using the simulated multimodal mode)",
+  "summarizeChance": 0.01,
+  "replyChainLimit": 5,
+  "freewillToggle": true,
+  "noNSFW": true,
+  "freewillReactChance": 0.04,
+  "freewillRespondChance": 0.02,
+  "freewillKeywords": {
+    "respond_freewill": [1, -1],
+    "react_freewill": [-1, 1]
+  }
 }
