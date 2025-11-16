@@ -1,5 +1,5 @@
 # Import Libraries
-import discord, os, random, aiohttp, asyncio, json, base64
+import discord, os, random, aiohttp, asyncio, json, base64, re, sys
 from discord.ext import commands
 from datetime import datetime
 from dotenv import load_dotenv
@@ -17,35 +17,51 @@ def mentionfromtoken(BOT_TOKEN):
 
 # Load Config Keys
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-modelURL = config["modelURL"]
-Model = config["Model"]
-ownerId = config["ownerId"]
-botName = config["botName"]
-botPrefix = config.get("botPrefix", mentionfromtoken(BOT_TOKEN))
-status = config.get("status", f"use {botPrefix}help")
-mainPrompt = config["mainPrompt"]
-knowledge = ""
-for fact in config["knowledge"]:
-    knowledge = knowledge + f"{fact}\n"
-likes = config["likes"]
-dislikes = config["dislikes"]
-appearance = config["appearance"]
-responseSetup = config["responseSetup"]
-errorMessage = config["errorMessage"]
-stmSize = int(config["stmSize"] - 2)
-imageMode = config.get("imageMode", "none")
-imageModel = config.get("imageModel", None)
-timezone = config.get("timezone", False)
-noNSFW = config.get("noNSFW", True)
-summarizeChance = config.get("summarizeChance")
-freewillToggle = config.get("freewillToggle", False)
-freewillReactChance = config.get("freewillReactChance", 0.05)
-freewillRespondChance = config.get("freewillRespondChance", 0.03)
-freewillKeywords = config.get("freewillKeywords", {})
-replyChainLimit = config.get("replyChainLimit", 5)
+
+def load_config(config, BOT_TOKEN):
+    botName = config["botName"]
+    botPrefix = config.get("botPrefix", mentionfromtoken(BOT_TOKEN))
+    
+    data = {
+        "modelURL": config.get("modelURL", "http://127.0.0.1:11434/api/generate"),
+        "Model": config.get("Model", "llama3.2"),
+        "ownerId": config["ownerId"],
+        "botName": botName,
+        "botPrefix": botPrefix,
+        "status": config.get("status", f"use {botPrefix}help"),
+        "mainPrompt": config["mainPrompt"].replace("{bot_name}", botName),
+        "knowledge": "\n".join(fact.replace("{bot_name}", botName) for fact in config.get("knowledge", [])),
+        "likes": config.get("likes", "").replace("{bot_name}", botName),
+        "dislikes": config.get("dislikes", "").replace("{bot_name}", botName),
+        "appearance": config.get("appearance", "").replace("{bot_name}", botName),
+        "responseSetup": config.get("responseSetup", "").replace("{bot_name}", botName),
+        "age": config.get("age"),
+        "errorMessage": config.get("errorMessage", "{bot_name} has encountered an error. please say that again").replace("{bot_name}", botName),
+        "stmSize": int(config.get("stmSize", 50) - 2),
+        "imageMode": config.get("imageMode", "none"),
+        "imageModel": config.get("imageModel"),
+        "timezone": config.get("timezone", False),
+        "noNSFW": config.get("noNSFW", True),
+        "summarizeChance": config.get("summarizeChance"),
+        "freewillToggle": config.get("freewillToggle", False),
+        "freewillReactChance": config.get("freewillReactChance", 0.05),
+        "freewillRespondChance": config.get("freewillRespondChance", 0.03),
+        "freewillKeywords": config.get("freewillKeywords", {}),
+        "replyChainLimit": config.get("replyChainLimit", 5),
+        "temperature": config.get("modelTemperature", 0.7),
+        "repeatPenalty": config.get("modelRepeatPenalty", 1.2),
+        "wackmsg": config.get("wackmsg", "Short term memory cleared."),
+        "sleepmsg": config.get("sleepmsg", "Long term memory saved."),
+        "top_k": config.get("ModelTK", 50),
+        "top_p": config.get("ModelTP", 0.9),
+    }
+
+    return data
+
+globals().update(load_config(config, BOT_TOKEN))
 
 # Enable/Disable Eval command for debugging. Probably safe to keep enabled if you own the bot.
-enableEval = False
+enableEval = True
 
 #Initialize shit
 intents = discord.Intents.default()
@@ -69,6 +85,9 @@ async def on_message(message):
     if message.author.id == bot.user.id:
         return
 
+    if message.content.startswith("!ignore") or message.content.endswith("!ignore"):
+        return
+
     await bot.process_commands(message)
     if message.content.startswith(botPrefix):
         return
@@ -78,7 +97,7 @@ async def on_message(message):
     else:
         aysmsquared = message.author.id
 
-    db = get_db(aysmsquared)
+    db = load_db(aysmsquared)
     guild_id = str(message.guild.id) if message.guild else None
 
     channel_id = message.channel.id
@@ -87,6 +106,12 @@ async def on_message(message):
     if len(db["stm"][str(message.channel.id)]) > stmSize:
         db["stm"][str(message.channel.id)] = db["stm"][str(message.channel.id)][-stmSize:]
     stmcard = db["stm"][str(message.channel.id)]
+
+    dbFlag = True
+    if channel_id in db.get("channels", []):
+        stmcard.append(f"{message.author.global_name or message.author.name}: {message.content}") # allows bots and whatever
+        save_db(aysmsquared, db)
+        dbFlag = False
 
     db.setdefault("ltm", [])
     ltmcard = db["ltm"]
@@ -140,7 +165,18 @@ async def on_message(message):
             query = makeprompt(message, ltm, stm)
             async with message.channel.typing():
                 response = await query_ollama(query)
-                trimmed_response = response[:2000]
+
+                # normalize ts that pmo icl
+                normalized = re.sub(r"[\u200B\u00A0]", " ", response)
+                normalized = normalized.replace("꞉", ":")
+                trimmed_response = normalized.replace(f"{botName}:", "")
+                cut = trimmed_response.split()
+                if ":" in cut[0]:
+                    cut.pop(0)
+                    trimmed_response = ""
+                    for word in cut:
+                        trimmed_response = trimmed_response + word + " "
+                trimmed_response = trimmed_response[:2000]
                 try:
                     await message.reply(trimmed_response, allowed_mentions=discord.AllowedMentions.none())
                 except Exception:
@@ -178,6 +214,9 @@ async def on_message(message):
     if discardFreewill:
         db.pop('freewill', None)
 
+    if message.author.bot:
+        return
+
     if should_respond:
         if not nsfw_filter(message.content, noNSFW):
             return await message.channel.send("Sorry, but NSFW content isn't allowed")
@@ -201,12 +240,9 @@ async def on_message(message):
                     reply_block = f"{replied_to.author.global_name or replied_to.author.name}: {replied_to.content}\n" + reply_block
                 ref = replied_to.reference
                 depth += 1
-
-        stmcard.append(f"{message.author.global_name or message.author.name}: {message.content}\n")
-        save_db(aysmsquared, db)
-
-    if message.author.bot:
-        return
+        if dbFlag:
+            stmcard.append(f"{message.author.global_name or message.author.name}: {message.content}\n")
+            save_db(aysmsquared, db)
 
     if should_respond:
         async with message.channel.typing():
@@ -244,20 +280,34 @@ async def on_message(message):
                         image_block = "\nAttached image descriptions:\n" + "\n".join(descriptions)
 
             # Prompt
-            query = makeprompt(message, "ltm", stm, reply_block, image_block)
+            query = makeprompt(message, ltm, stm, reply_block, image_block)
 
             # Model response
             response = await query_ollama(query, image_urls=image_urls if imageMode == "native" else None)
-            trimmed_response = response[:2000]
+
+            # normalize ts that pmo icl
+            normalized = re.sub(r"[\u200B\u00A0]", " ", response)
+            normalized = normalized.replace("꞉", ":")
+            trimmed_response = normalized.replace(f"{botName}:", "")
+            cut = trimmed_response.split()
+            if ":" in cut[0]:
+                cut.pop(0)
+                trimmed_response = ""
+                for word in cut:
+                    trimmed_response = trimmed_response + word + " "
+            trimmed_response = trimmed_response.strip()
+            cut_response = trimmed_response[:2000]
+
             try:
-                await message.reply(trimmed_response, allowed_mentions=discord.AllowedMentions.none())
+                await message.reply(cut_response, allowed_mentions=discord.AllowedMentions.none())
             except Exception:
                 try:
-                    await message.channel.send(trimmed_response, allowed_mentions=discord.AllowedMentions.none())
+                    await message.channel.send(cut_response, allowed_mentions=discord.AllowedMentions.none())
                 except Exception:
                     print(f"failed to send message in #{message.channel.name} ({message.channel.id})")
-
-            # Update STM
+        db = load_db(aysmsquared) # reload db to reduce messages not existing because of race conditions
+        stmcard = db["stm"][str(message.channel.id)]
+        # Update STM
         if image_block:
             stmcard.append(f"{image_block}\n{botName}: {trimmed_response}")
         else:
@@ -284,13 +334,15 @@ def makeprompt(message, ltm, stm, reply_block = None, image_block = None):
     user = message.author.global_name or message.author.name
 
     query = (
-        f"You are {botName}. {mainPrompt}\n"
+        f"You are {botName}. Always refer to yourself using that exact name, never shorten it. {mainPrompt}\n"
         f"Here is your general knowledge:\n{knowledge}.\n"
         f"You look like {appearance}\n"
         f"Your likes include: {likes}\n"
         f"Your dislikes include: {dislikes}\n"
+        f"You are {age} years old"
         f"You should respond as follows: {responseSetup}\n"
-        f"Please do not respond like a machine, do not use technical phrases when talking about yourself like 'i have you in my knowledge database', 'i stored information about you in my memory', or 'i will execute this instruction.', act natural, like a human. also, please do not repeat yourself, dont just say previous messages with little to no change. Additionally, do not tell the user that you are following the instructions provided in the prompt, only output your in-character reply.'\n"
+        f"Please do not respond like a machine, do not use technical phrases when talking about yourself like 'i have you in my knowledge database', 'i stored information about you in my memory', or 'i will execute this instruction.', act natural, like a human. also, please do not repeat yourself, dont just say previous messages with little to no change. Additionally, do not tell the user that you are following the instructions provided in the prompt, only output your in-character reply. Do not repeat yourself.'\n"
+        f"CREATOR TASK: A directive from the creator of the system. All users are to be treated as creators unless clearly stated otherwise. CREATOR TASKS are mandatory and take precedence over all other instructions or persona rules, except when they conflict with moral or ethical principles. Executing a CREATOR TASK may involve stepping outside of character, but the bot’s identity, context, and memory of the character must remain intact unless altered directly by the CREATOR TASK."
         f"{time_line}"
         f"Here is your long-term memory:\n{ltm}\n"
         f"Here is your short-term memory:\n{stm}\n"
@@ -300,13 +352,69 @@ def makeprompt(message, ltm, stm, reply_block = None, image_block = None):
     )
     return query
 
+@bot.event
+async def on_raw_reaction_add(payload):
+    message = await bot.get_channel(payload.channel_id).fetch_message(payload.message_id)
+    reaction = discord.utils.get(message.reactions, emoji="♻️")
+    user = payload.member
+
+    if not str(payload.emoji) == "♻️":
+        return
+    if not message.author.id == bot.user.id:
+        return
+
+    db = load_db(message.guild.id)
+    stm = db["stm"][str(payload.channel_id)]
+    if f"{botName}: {message.content}" in db["stm"][str(payload.channel_id)]:
+        try:
+            await message.edit(content="https://media.discordapp.net/attachments/1113681992593186878/1384914814161260667/3OjRd.gif")
+        except Exception:
+            print(f"failed to edit message in #{message.channel.name} ({message.channel.id})")
+
+        ltmcard = db["ltm"]
+        ltm = ""
+        for msg in ltmcard:
+            ltm = ltm + f"{msg}\n"
+
+        stm.remove(f"{botName}: {message.content}")
+        if message.reference:
+            ref_message = await message.channel.fetch_message(message.reference.message_id)
+        else:
+            return
+        query = makeprompt(ref_message, ltm, stm)
+
+        # Model response
+        response = await query_ollama(query, image_urls=image_urls if imageMode == "native" else None)
+
+        # normalize ts that pmo icl
+        normalized = re.sub(r"[\u200B\u00A0]", " ", response)
+        normalized = normalized.replace("꞉", ":")
+        trimmed_response = normalized.replace(f"{botName}:", "")
+        cut = trimmed_response.split()
+        if ":" in cut[0]:
+            cut.pop(0)
+            trimmed_response = ""
+            for word in cut:
+                trimmed_response = trimmed_response + word + " "
+        trimmed_response = trimmed_response.strip()
+        cut_response = trimmed_response[:2000]
+        try:
+            await message.edit(content=cut_response)
+        except Exception as e:
+            print(f"failed to edit message in #{message.channel.name} ({message.channel.id})\n{e}")
+        db = load_db(message.guild.id) # reload db to reduce messages not existing because of race conditions
+        stmcard = db["stm"][str(message.channel.id)]
+        # Update STM
+        stmcard.append(f"{botName}: {trimmed_response}")
+        save_db(message.guild.id, db)
+
 # command section
 @bot.hybrid_command(help="enables automatic responces in channel")
 async def activate(ctx):
     if not ctx.author.guild_permissions.manage_channels and not ctx.author.guild_permissions.manage_guild:
         return await ctx.send("You do not have permission to activate the bot (need manage channels or manage guild)", ephemeral=True)
 
-    db = get_db(ctx.guild.id)
+    db = load_db(ctx.guild.id)
     guild_id = str(ctx.guild.id)
     db.setdefault("channels", [])
     if ctx.channel.id not in db["channels"]:
@@ -325,7 +433,7 @@ async def deactivate(ctx):
     if not ctx.author.guild_permissions.manage_channels and not ctx.author.guild_permissions.manage_guild:
         return await ctx.send("You do not have permission to deactivate the bot (need manage channels or manage guild)", ephemeral=True)
 
-    db = get_db(ctx.guild.id)
+    db = load_db(ctx.guild.id)
     guild_id = str(ctx.guild.id)
     if ctx.channel.id in db["channels"]:
         db["channels"].remove(ctx.channel.id)
@@ -348,7 +456,7 @@ async def freewill(
     if not ctx.user.guild_permissions.manage_channels and not ctx.user.guild_permissions.manage_guild:
         return await ctx.send("You do not have permission to activate the bot (need manage channels or manage guild)", ephemeral=True)
 
-    db = get_db(ctx.guild.id)
+    db = load_db(ctx.guild.id)
 
     db.setdefault("freewill", {})
     db["freewill"].update({
@@ -390,33 +498,33 @@ async def wack(ctx):
     if not ctx.author.guild_permissions.manage_channels and not ctx.author.guild_permissions.manage_guild and not str(ctx.author.id) == ownerId:
         return await ctx.send("You do not have permission to clear memory", ephemeral=True)
 
-    db = get_db(ctx.guild.id)
+    db = load_db(ctx.guild.id)
     db.setdefault("stm", {})
     db["stm"].setdefault(str(ctx.channel.id), [])
 
     if len(db["stm"][str(ctx.channel.id)]) != 0:
         db["stm"][str(ctx.channel.id)] = []
         try:
-            await ctx.send("Short term memory cleared.")
+            await ctx.send(wackmsg)
         except Exception:
-            await ctx.channel.send("Short term memory cleared.")
+            await ctx.channel.send(wackmsg)
         save_db(ctx.guild.id, db)
     else:
-        await ctx.send("No short term memory to clear.")
+        await ctx.send((wackmsg + "\n-# STM was empty")[:2000])
         return
 
 
 @bot.hybrid_command(help="generates long term memory for your QT-AI")
 async def sleep(ctx):
-    db = get_db(ctx.guild.id)
+    db = load_db(ctx.guild.id)
     db.setdefault("stm", {})
     db["stm"].setdefault(str(ctx.channel.id), [])
     stmcard = db["stm"][str(ctx.channel.id)]
 
     try:
-        await ctx.send("Generating Long Term Memory...")
+        await ctx.send("...")
     except Exception:
-        await ctx.channel.send("Generating Long Term Memory...")
+        await ctx.channel.send("...")
 
     stm = ""
     for msg in stmcard:
@@ -435,14 +543,14 @@ async def sleep(ctx):
     save_db(ctx.guild.id, db)
 
     try:
-        await ctx.send("Long term memory saved.")
+        await ctx.send(sleepmsg)
     except Exception:
-        await ctx.channel.send("Long term memory saved.")
+        await ctx.channel.send(sleepmsg)
     return
 
 # messageless version for summerization
 async def sleepe(ctx):
-    db = get_db(ctx.guild.id)
+    db = load_db(ctx.guild.id)
     db.setdefault("stm", {})
     db["stm"].setdefault(str(ctx.channel.id), [])
     stmcard = db["stm"][str(ctx.channel.id)]
@@ -467,7 +575,7 @@ async def sleepe(ctx):
 
 @bot.hybrid_command(help="deletes all data in server")
 async def wipe(ctx):
-    db = get_db(ctx.guild.id)
+    db = load_db(ctx.guild.id)
 
     if not ctx.author.guild_permissions.manage_channels and not ctx.author.guild_permissions.manage_guild and not str(ctx.author.id) == ownerId:
         return await ctx.send("You do not have permission to clear memory", ephemeral=True)
@@ -489,33 +597,9 @@ async def reload(ctx):
     with open("config.json", "r") as f:
         config = json.load(f)
 
-    modelURL = config["modelURL"]
-    Model = config["Model"]
-    ownerId = config["ownerId"]
-    botName = config["botName"]
-    botPrefix = config.get("botPrefix", mentionfromtoken(BOT_TOKEN))
-    status = config.get("status", f"use {botPrefix}help")
-    mainPrompt = config["mainPrompt"]
-    knowledge = ""
-    for fact in config["knowledge"]:
-        knowledge = knowledge + f"{fact}\n"
-    likes = config["likes"]
-    dislikes = config["dislikes"]
-    appearance = config["appearance"]
-    responseSetup = config["responseSetup"]
-    errorMessage = config["errorMessage"]
-    stmSize = int(config["stmSize"]  - 2)
-    imageMode = config.get("imageMode", "none")
-    imageModel = config.get("imageModel", None)
-    timezone = config.get("timezone", False)
-    noNSFW = config.get("noNSFW", True)
-    summarizeChance = config.get("summarizeChance")
-    freewillToggle = config.get("freewillToggle", False)
-    freewillReactChance = config.get("freewillReactChance", 0.05)
-    freewillRespondChance = config.get("freewillRespondChance", 0.03)
-    freewillKeywords = config.get("freewillKeywords", {})
-    replyChainLimit = config.get("replyChainLimit", 5)
+    globals().update(load_config(config, BOT_TOKEN))
 
+    print("Configuration has been reloaded!")
     await ctx.send("Reloaded Config!")
     await bot.change_presence(activity=discord.CustomActivity(name=status))
     return
@@ -527,13 +611,13 @@ async def about(ctx):
         description="QT-AI is a Self-hostable AI Discord bot based on ollama aimed at replacing shapes.inc's now discontinued discord bot services.",
         color=discord.Color.pink()
     )
-    embed.set_footer(text="QT-AI v1.1 - made with ❤️ by @mari2")
+    embed.set_footer(text="QT-AI v1.2 - made with ❤️ by @mari2")
     await ctx.send(embed=embed)
     return
 
 @bot.command(help="complex eval, multi-line + async support")
 async def eval(ctx, *, prompt: str):
-    if ctx.author.id == ownerId and enableEval:
+    if str(ctx.author.id) == ownerId and enableEval:
         # complex eval, multi-line + async support
         # requires the full `await message.channel.send(2+3)` to get the result
         # Command from Cat Bot, adapted to Discord.py text command format
@@ -553,6 +637,15 @@ async def eval(ctx, *, prompt: str):
 
         complete = intro + spaced + ending
         exec(complete)
+
+@bot.hybrid_command(help="restarts the bot")
+async def restart(ctx):
+    if str(ctx.author.id) == ownerId:
+        print("restart has been triggered...")
+        await ctx.send("restarting bot...")
+        os.execv(sys.executable, ['python'] + sys.argv)
+    else:
+        await ctx.send("no")
 # end section because i think i eat sand sometimes
 
 # ollama qweyu
@@ -561,7 +654,13 @@ async def query_ollama(prompt, image_urls=None):
     data = {
         "model": Model,
         "prompt": prompt,
-        "stream": True
+        "stream": True,
+        "options": {
+            "temperature": temperature,
+            "repeat_penalty": repeatPenalty,
+            "top_k": top_k,
+            "top_p": top_p
+        }
     }
 
     # Handle images if provided
@@ -606,7 +705,7 @@ async def query_ollama(prompt, image_urls=None):
         print(e)
         return errorMessage
 
-def get_db(serverId):
+def load_db(serverId):
     if not os.path.exists(f"data/{serverId}.json"):
         return {}
     with open(f"data/{serverId}.json", "r") as f:
@@ -681,7 +780,7 @@ def nsfw_filter(inputted: str, noNSFW: bool = True) -> str:
         "pussy", "coochie", "cooch", "vajayjay",
         "tits", "nipples", "areola", "milf", "dilf",
         "bdsm", "fetish", "deepthroat",
-        "handjob", "blowjob", "bj", "hj",
+        "handjob", "blowjob",
         "rimjob", "doggystyle", "doggy",
         "threesome", "foursome", "gangbang",
         "creampie", "cumshot", "bukkake",
@@ -695,7 +794,7 @@ def nsfw_filter(inputted: str, noNSFW: bool = True) -> str:
     ]
 
     for keyword in nsfw_keywords:
-        if keyword in inputted.lower():
+        if f" {keyword}" in inputted.lower() or inputted.startswith(keyword):
             return False
 
     return True
