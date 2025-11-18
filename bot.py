@@ -371,6 +371,7 @@ async def on_raw_reaction_add(payload):
         except Exception:
             print(f"failed to edit message in #{message.channel.name} ({message.channel.id})")
 
+        db.setdefault("ltm", [])
         ltmcard = db["ltm"]
         ltm = ""
         for msg in ltmcard:
