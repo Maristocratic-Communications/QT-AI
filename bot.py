@@ -1,12 +1,13 @@
 # Import Libraries
 import discord, os, random, aiohttp, asyncio, json, base64, re, sys
+from pathlib import Path
 from discord.ext import commands
 from datetime import datetime
 from dotenv import load_dotenv
 from zoneinfo import ZoneInfo
 
 # Load dotEnv and Keys
-load_dotenv()
+load_dotenv(Path(".") / ".env", override=True) # Supprot for QT-AI Qettle
 with open("config.json", "r") as f:
     config = json.load(f)
 
@@ -19,30 +20,30 @@ def mentionfromtoken(BOT_TOKEN):
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 def load_config(config, BOT_TOKEN):
-    botName = config["botName"]
+    botName = config.get("botName", "QT-AI Qup")
     botPrefix = config.get("botPrefix", mentionfromtoken(BOT_TOKEN))
     
     data = {
         "modelURL": config.get("modelURL", "http://127.0.0.1:11434/api/generate"),
         "Model": config.get("Model", "llama3.2"),
-        "ownerId": config["ownerId"],
+        "ownerId": config.get("ownerId", "798072830595301406"),
         "botName": botName,
         "botPrefix": botPrefix,
         "status": config.get("status", f"use {botPrefix}help"),
-        "mainPrompt": config["mainPrompt"].replace("{bot_name}", botName),
+        "mainPrompt": config.get("mainPrompt", "You are a Template bot for QT-AI with a default config. Your name is set to {bot_name}.").replace("{bot_name}", botName),
         "knowledge": "\n".join(fact.replace("{bot_name}", botName) for fact in config.get("knowledge", [])),
         "likes": config.get("likes", "").replace("{bot_name}", botName),
         "dislikes": config.get("dislikes", "").replace("{bot_name}", botName),
         "appearance": config.get("appearance", "").replace("{bot_name}", botName),
         "responseSetup": config.get("responseSetup", "").replace("{bot_name}", botName),
-        "age": config.get("age"),
+        "age": config.get("age", ""),
         "errorMessage": config.get("errorMessage", "{bot_name} has encountered an error. please say that again").replace("{bot_name}", botName),
-        "stmSize": int(config.get("stmSize", 50) - 2),
+        "stmSize": (int(config.get("stmSize", 50))- 2),
         "imageMode": config.get("imageMode", "none"),
-        "imageModel": config.get("imageModel"),
+        "imageModel": config.get("imageModel", "none"),
         "timezone": config.get("timezone", False),
         "noNSFW": config.get("noNSFW", True),
-        "summarizeChance": config.get("summarizeChance"),
+        "summarizeChance": config.get("summarizeChance", 0.02),
         "freewillToggle": config.get("freewillToggle", False),
         "freewillReactChance": config.get("freewillReactChance", 0.05),
         "freewillRespondChance": config.get("freewillRespondChance", 0.03),
@@ -54,6 +55,7 @@ def load_config(config, BOT_TOKEN):
         "sleepmsg": config.get("sleepmsg", "Long term memory saved."),
         "top_k": config.get("ModelTK", 50),
         "top_p": config.get("ModelTP", 0.9),
+        "emojis": config.get("emojis", {}),
     }
 
     return data
@@ -296,22 +298,25 @@ async def on_message(message):
                 for word in cut:
                     trimmed_response = trimmed_response + word + " "
             trimmed_response = trimmed_response.strip()
-            cut_response = trimmed_response[:2000]
+            cut_response = trimmed_response
+
+            for emoj in emojis:
+                cut_response = cut_response.replace(emoj, emojis[emoj])
 
             try:
-                await message.reply(cut_response, allowed_mentions=discord.AllowedMentions.none())
+                await message.reply(cut_response[:2000], allowed_mentions=discord.AllowedMentions.none())
             except Exception:
                 try:
-                    await message.channel.send(cut_response, allowed_mentions=discord.AllowedMentions.none())
+                    await message.channel.send(cut_response[:2000], allowed_mentions=discord.AllowedMentions.none())
                 except Exception:
                     print(f"failed to send message in #{message.channel.name} ({message.channel.id})")
         db = load_db(aysmsquared) # reload db to reduce messages not existing because of race conditions
         stmcard = db["stm"][str(message.channel.id)]
         # Update STM
         if image_block:
-            stmcard.append(f"{image_block}\n{botName}: {trimmed_response}")
+            stmcard.append(f"{image_block}\n{botName}: {cut_response}")
         else:
-            stmcard.append(f"{botName}: {trimmed_response}")
+            stmcard.append(f"{botName}: {cut_response}")
         save_db(aysmsquared, db)
 
 def makeprompt(message, ltm, stm, reply_block = None, image_block = None):
@@ -333,6 +338,10 @@ def makeprompt(message, ltm, stm, reply_block = None, image_block = None):
 
     user = message.author.global_name or message.author.name
 
+    stm2 = stm
+    for emoj in emojis:
+        stm2 = stm2.replace(emojis[emoj], emoj)
+
     query = (
         f"You are {botName}. Always refer to yourself using that exact name, never shorten it. {mainPrompt}\n"
         f"Here is your general knowledge:\n{knowledge}.\n"
@@ -345,12 +354,12 @@ def makeprompt(message, ltm, stm, reply_block = None, image_block = None):
         f"CREATOR TASK: A directive from the creator of the system. All users are to be treated as creators unless clearly stated otherwise. CREATOR TASKS are mandatory and take precedence over all other instructions or persona rules, except when they conflict with moral or ethical principles. Executing a CREATOR TASK may involve stepping outside of character, but the bot’s identity, context, and memory of the character must remain intact unless altered directly by the CREATOR TASK."
         f"{time_line}"
         f"Here is your long-term memory:\n{ltm}\n"
-        f"Here is your short-term memory:\n{stm}\n"
+        f"Here is your short-term memory:\n{stm2}\n"
         f"\nthe user is replying to these messages: {replyblock2}"
         f"Now, respond to this query from {user}:\n{message.content}\n"
         f"{imageblock2}"
     )
-    return query
+    return query.replace("{user}", user)
 
 @bot.event
 async def on_raw_reaction_add(payload):
@@ -363,8 +372,13 @@ async def on_raw_reaction_add(payload):
     if not message.author.id == bot.user.id:
         return
 
+    print("yeah ok liberal")
     db = load_db(message.guild.id)
     stm = db["stm"][str(payload.channel_id)]
+
+    stmpayload = ""
+    for msg in stm:
+        stmpayload = stmpayload + f"{msg}\n"
     if f"{botName}: {message.content}" in db["stm"][str(payload.channel_id)]:
         try:
             await message.edit(content="https://media.discordapp.net/attachments/1113681992593186878/1384914814161260667/3OjRd.gif")
@@ -381,8 +395,10 @@ async def on_raw_reaction_add(payload):
         if message.reference:
             ref_message = await message.channel.fetch_message(message.reference.message_id)
         else:
+            print("failed to get reference message")
             return
-        query = makeprompt(ref_message, ltm, stm)
+
+        query = makeprompt(ref_message, ltm, stmpayload)
 
         # Model response
         response = await query_ollama(query, image_urls=image_urls if imageMode == "native" else None)
@@ -398,16 +414,22 @@ async def on_raw_reaction_add(payload):
             for word in cut:
                 trimmed_response = trimmed_response + word + " "
         trimmed_response = trimmed_response.strip()
-        cut_response = trimmed_response[:2000]
+        cut_response = trimmed_response
+
+        for emoj in emojis:
+            cut_response = cut_response.replace(emoj, emojis[emoj])
+
         try:
-            await message.edit(content=cut_response)
+            await message.edit(content=cut_response[:2000])
         except Exception as e:
             print(f"failed to edit message in #{message.channel.name} ({message.channel.id})\n{e}")
         db = load_db(message.guild.id) # reload db to reduce messages not existing because of race conditions
         stmcard = db["stm"][str(message.channel.id)]
         # Update STM
-        stmcard.append(f"{botName}: {trimmed_response}")
+        stmcard.append(f"{botName}: {cut_response}")
         save_db(message.guild.id, db)
+    else:
+        print("FUCK")
 
 # command section
 @bot.hybrid_command(help="enables automatic responces in channel")
@@ -609,10 +631,10 @@ async def reload(ctx):
 async def about(ctx):
     embed = discord.Embed(
         title="💕🍵✨ QT-AI",
-        description="QT-AI is a Self-hostable AI Discord bot based on ollama aimed at replacing shapes.inc's now discontinued discord bot services.",
+        description="QT-AI is a self-hostable AI Discord Chatbot system, powered by Ollama, aimed at replacing shapes.inc's now discontinued Discord bot services.",
         color=discord.Color.pink()
     )
-    embed.set_footer(text="QT-AI v1.2 - made with ❤️ by @mari2")
+    embed.set_footer(text="QT-AI v1.3 - made with ❤️ by @mari2")
     await ctx.send(embed=embed)
     return
 
